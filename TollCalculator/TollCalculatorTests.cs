@@ -34,7 +34,7 @@ namespace TollCalculator
         public void ShouldGetExpectedTollFee(DateTime date1, DateTime date2, int expected)
         {
             TollCalculator calculator = new TollCalculator();
-            //lägg på mer testdata för alla tider på dygnet
+            //lägg på mer testdata för olika tider på dygnet
             DateTime[] dates = new DateTime[] { date1, date2 };
             int result = calculator.GetTollFee(new Car(), dates);
 
