@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using Nager.Date;
 
 namespace TollCalculator
 {
     public class TollCalculator
     {
-
         /**
      * Calculate the total toll fee for one day
      *
@@ -15,12 +16,7 @@ namespace TollCalculator
      * @return - the total toll fee for that day
      */
 
-        //gör ett console projekt så jag kan testa där
-        //gör tester
-        //kolla nullcheckar
-
         private const int MaxTollFee = 60;
-        private const int TimeFrame = 60;
         private const int July = 7;
 
         public int GetTollFee(IVehicle vehicle, DateTime[] dates)
@@ -35,28 +31,37 @@ namespace TollCalculator
                 throw new ArgumentNullException(nameof(vehicle), "vehicle is invalid");
             }
 
-            // Är det verkligen säkert att det är start som ligger först i arryen?
-            DateTime intervalStart = dates[0];
             int totalFee = 0;
-            foreach (DateTime date in dates)
+
+            var sortedDates = dates.OrderBy(x => x.TimeOfDay).ToList();
+
+            for (int i = 0; i < sortedDates.Count; i++)
             {
-                int nextFee = GetTollFeeForSingleEvent(date, vehicle);
-                int tempFee = GetTollFeeForSingleEvent(intervalStart, vehicle);
+                int nextFee = GetTollFeeForSingleEvent(sortedDates[i], vehicle);
 
-                long diffInMillies = date.Millisecond - intervalStart.Millisecond;
-                long minutes = diffInMillies / 1000 / 60;
-
-                bool isWithinTimeFrame = minutes <= TimeFrame;
-
-                if (isWithinTimeFrame)
+                if (i > 0)
                 {
-                    if (totalFee > 0) totalFee -= tempFee;
-                    if (nextFee >= tempFee) tempFee = nextFee;
-                    totalFee += tempFee;
+                    var tempFee = GetTollFeeForSingleEvent(sortedDates[i - 1], vehicle);
+
+                    var minutes = sortedDates[i].Subtract(sortedDates[i - 1]).TotalMinutes;
+
+                    bool isWithinTimeFrame = minutes <= 60;
+
+                    if (isWithinTimeFrame)
+                    {
+                        if (totalFee > 0) totalFee -= tempFee;
+                        if (nextFee >= tempFee) tempFee = nextFee;
+                        totalFee += tempFee;
+                    }
+                    else
+                    {
+                        totalFee += nextFee;
+                    }
+
                 }
                 else
                 {
-                    totalFee += nextFee;
+                    totalFee = nextFee;
                 }
             }
 
@@ -68,7 +73,7 @@ namespace TollCalculator
         {
             if (vehicle == null) return false;
             String vehicleType = vehicle.GetVehicleType();
-            //kan man göra detta kortare?
+
             return vehicleType.Equals(TollFreeVehicles.Motorbike.ToString()) ||
                    vehicleType.Equals(TollFreeVehicles.Tractor.ToString()) ||
                    vehicleType.Equals(TollFreeVehicles.Emergency.ToString()) ||
@@ -77,8 +82,6 @@ namespace TollCalculator
                    vehicleType.Equals(TollFreeVehicles.Military.ToString());
         }
 
-        //har samma namn och är publik, thats wierd?
-        //Vad gör d
         private int GetTollFeeForSingleEvent(DateTime date, IVehicle vehicle)
         {
             if (IsTollFreeDate(date) || IsTollFreeVehicle(vehicle)) return 0;
@@ -86,7 +89,6 @@ namespace TollCalculator
             int hour = date.Hour;
             int minute = date.Minute;
 
-            //magic numbers
             if (hour == 6 && minute >= 0 && minute <= 29) return 8;
             else if (hour == 6 && minute >= 30 && minute <= 59) return 13;
             else if (hour == 7 && minute >= 0 && minute <= 59) return 18;
@@ -101,10 +103,10 @@ namespace TollCalculator
 
         private bool IsTollFreeDate(DateTime date)
         {
-            int year = date.Year;
             int month = date.Month;
 
-            if (DateHelper.IsHoliday(date) || DateHelper.IsWeekend(date) || month == July)
+            if (DateSystem.IsPublicHoliday(date, CountryCode.SE) || DateSystem.IsWeekend(date, CountryCode.SE) ||
+                month == July)
                 return true;
 
             return false;

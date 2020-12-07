@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.VisualBasic;
+using Nager.Date;
+using Nager.Date.Model;
 using Xunit;
 
 namespace TollCalculator
 {
     public class TollCalculatorTests
     {
-
         [Fact]
         public void GetTollFeeShouldThrowArgumentNullExceptionIfDatesAreNull()
         {
@@ -26,16 +28,23 @@ namespace TollCalculator
             Assert.Throws<ArgumentNullException>(() => tollCalculator.GetTollFee(null, dates));
         }
 
-        //skriv ett happycase test typ detta ska ge mig detta resultatet, för tider på dygnet med olika tider
-        //skriv ett test för att bara kunna få maxbeloppet
-
         [Theory]
-        [MemberData(nameof(TestData))]
-        public void ShouldGetExpectedTollFee(DateTime date1, DateTime date2, int expected)
+        [MemberData(nameof(Data))]
+        public void ShouldGetExpectedTollFee(int expected, params DateTime[] dates)
         {
             TollCalculator calculator = new TollCalculator();
-            //lägg på mer testdata för olika tider på dygnet
-            DateTime[] dates = new DateTime[] { date1, date2 };
+
+            int result = calculator.GetTollFee(new Car(), dates);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [MemberData(nameof(MaxFeeData))]
+        public void ShouldOnlyPayOncePerHourWithHighestToll(int expected, params DateTime[] dates)
+        {
+            TollCalculator calculator = new TollCalculator();
+
             int result = calculator.GetTollFee(new Car(), dates);
 
             Assert.Equal(expected, result);
@@ -45,38 +54,47 @@ namespace TollCalculator
         [MemberData(nameof(TollFreeDays))]
         public void ShouldBeATollFreeDay(params DateTime[] dates)
         {
-            //testa andra datum än saturday
-            //testa julafton och alla andra dagar då det inte ska kosta något
-
             TollCalculator calculator = new TollCalculator();
             int expectedResult = 0;
 
             int result = calculator.GetTollFee(new Car(), dates);
 
             Assert.Equal(expectedResult, result);
+
         }
 
         public static IEnumerable<object[]> TollFreeDays => new List<object[]>
         {
             new object[] { DateHelper.GetNextWeekday(DayOfWeek.Saturday) , DateHelper.GetLastWeekday(DayOfWeek.Saturday) },
-            new object[] { DateHelper.GetChristmasEve(DateTime.Today), DateHelper.GetNewYearsEve(DateTime.Today), 
-                DateHelper.GetThirteenEvening(DateTime.Today), DateHelper.GetThirteenDayChristmas(DateTime.Today)}
+            new object[] { new DateTime(DateTime.Now.Year, 12, 24).AddHours(8), new DateTime(DateTime.Now.Year, 01, 01).AddHours(10)},
+            new object[] { new DateTime(DateTime.Today.Year, 07, 07).AddHours(9), new DateTime(DateTime.Today.Year, 07, 22).AddHours(14) }
         };
 
-        public static IEnumerable<object[]> TestData => new List<object[]>
+        public static IEnumerable<object[]> Data => new List<object[]>
         {
-            new object[] { DateTime.Today.AddHours(14).AddMinutes(59), DateTime.Today.AddHours(12), 8 },
-            new object[] { DateTime.Today.AddHours(6), DateTime.Today.AddHours(6).AddMinutes(15), 8},
-            new object[] { DateTime.Today.AddHours(6).AddMinutes(30), DateTime.Today.AddHours(6).AddMinutes(59), 13},
-            new object[] { DateTime.Today.AddHours(6).AddMinutes(30), DateTime.Today.AddHours(6).AddMinutes(59), 13},
-            new object[] { DateTime.Today.AddHours(7), DateTime.Today.AddHours(7).AddMinutes(59), 18},
-            new object[] { DateTime.Today.AddHours(8), DateTime.Today.AddHours(8).AddMinutes(29), 13},
-            new object[] { DateTime.Today.AddHours(8).AddMinutes(30), DateTime.Today.AddHours(14).AddMinutes(59), 8},
-            new object[] { DateTime.Today.AddHours(15).AddMinutes(28), DateTime.Today.AddHours(15).AddMinutes(29), 13},
-            new object[] { DateTime.Today.AddHours(15).AddMinutes(30), DateTime.Today.AddHours(16).AddMinutes(59), 18},
-            new object[] { DateTime.Today.AddHours(17).AddMinutes(30), DateTime.Today.AddHours(17).AddMinutes(59), 13},
-            new object[] { DateTime.Today.AddHours(18), DateTime.Today.AddHours(18).AddMinutes(29), 8},
-            new object[] { DateTime.Today.AddHours(18).AddMinutes(30), DateTime.Today.AddHours(5).AddMinutes(59), 0}
+            new object[] { 8, new DateTime(DateTime.Now.Year, 03, 26 , 14, 59, 0), new DateTime(DateTime.Now.Year, 03, 26, 12 , 0, 0)},
+            new object[] { 8,  new DateTime(DateTime.Now.Year, 03, 26 , 6, 0, 0), new DateTime(DateTime.Now.Year, 03, 26, 6 , 15, 0)},
+            new object[] { 13, new DateTime(DateTime.Now.Year, 03, 26 , 6, 30, 0), new DateTime(DateTime.Now.Year, 03, 26, 6 , 59, 0) },
+            new object[] { 18,new DateTime(DateTime.Now.Year, 03, 26 , 7, 0, 0), new DateTime(DateTime.Now.Year, 03, 26, 7 , 59, 0) },
+            new object[] { 13, new DateTime(DateTime.Now.Year, 03, 26 , 8, 0, 0), new DateTime(DateTime.Now.Year, 03, 26, 8 , 29, 0) },
+            new object[] { 16 , new DateTime(DateTime.Now.Year, 03, 26 , 8, 30, 0), new DateTime(DateTime.Now.Year, 03, 26, 14 , 59, 0), },
+            new object[] { 13, new DateTime(DateTime.Now.Year, 03, 26 , 15, 00, 0), new DateTime(DateTime.Now.Year, 03, 26, 15 , 29, 0)},
+            new object[] { 13,new DateTime(DateTime.Now.Year, 03, 26 , 15, 28, 0), new DateTime(DateTime.Now.Year, 03, 26, 15 , 29, 0) },
+            new object[] { 36,  new DateTime(DateTime.Now.Year, 03, 26 , 15, 30, 0), new DateTime(DateTime.Now.Year, 03, 26, 16 , 59, 0) },
+            new object[] { 13 ,new DateTime(DateTime.Now.Year, 03, 26 , 17, 30, 0), new DateTime(DateTime.Now.Year, 03, 26, 17 , 59, 0) },
+            new object[] { 8 , new DateTime(DateTime.Now.Year, 03, 26 , 18, 00, 0), new DateTime(DateTime.Now.Year, 03, 26, 18 , 29, 0)},
+            new object[] { 0 ,new DateTime(DateTime.Now.Year, 03, 26 , 18, 30, 0), new DateTime(DateTime.Now.Year, 03, 26, 5 , 59, 0)},
+            new object[] { 21, new DateTime(DateTime.Now.Year, 03, 26 , 6, 30, 0), new DateTime(DateTime.Now.Year, 03, 26, 18 , 28, 0)},
+            new object[] { 47, new DateTime(DateTime.Now.Year, 3, 26, 6, 0, 0), new DateTime(DateTime.Now.Year, 3, 26, 8, 0, 0), new DateTime(DateTime.Now.Year, 3, 26, 17, 15, 0), new DateTime(DateTime.Now.Year, 3, 26, 16, 50, 0), new DateTime(DateTime.Now.Year, 3, 26, 18, 20, 0)}
+        };
+
+        public static IEnumerable<object[]> MaxFeeData => new List<object[]>
+        {
+            new object[]
+            {
+                13, new DateTime(DateTime.Now.Year, 03, 26 , 6, 30, 0), new DateTime(DateTime.Now.Year, 03, 26, 6 , 0, 0), new DateTime(DateTime.Now.Year, 03, 26, 6 , 1, 0),
+                new DateTime(DateTime.Now.Year, 03, 26, 6 , 2, 0), new DateTime(DateTime.Now.Year, 03, 26, 6 , 3, 0)
+            }
         };
     }
 }

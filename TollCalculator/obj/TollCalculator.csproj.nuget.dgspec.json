@@ -44,9 +44,17 @@
         "netcoreapp3.1": {
           "targetAlias": "netcoreapp3.1",
           "dependencies": {
+            "AutoFixture.Xunit2": {
+              "target": "Package",
+              "version": "[4.14.0, )"
+            },
             "Microsoft.NET.Test.Sdk": {
               "target": "Package",
               "version": "[16.8.3, )"
+            },
+            "Nager.Date": {
+              "target": "Package",
+              "version": "[1.26.6, )"
             },
             "xunit": {
               "target": "Package",
